@@ -12,6 +12,8 @@ class Settings:
     SUPABASE_USE_DIRECT_DB: bool = os.getenv("SUPABASE_USE_DIRECT_DB", "false").lower() == "true"
     SUPABASE_DIRECT_DB_URL: str = os.getenv("SUPABASE_DIRECT_DB_URL", "")
     NEWSAPI_KEY: str = os.getenv("NEWSAPI_KEY", "")
+    GOOGLE_AI_STUDIO_API_KEY: str = os.getenv("GOOGLE_AI_STUDIO_API_KEY", "")
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.0-mini")
 
 
 settings = Settings()

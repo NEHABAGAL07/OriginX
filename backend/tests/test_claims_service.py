@@ -33,3 +33,36 @@ def test_insert_claim_direct_path(monkeypatch) -> None:
 
     result = claims_service.insert_claim("direct")
     assert result["claim_text"] == "direct"
+
+
+def test_insert_verification_history_supabase_path(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "SUPABASE_USE_DIRECT_DB", False)
+    monkeypatch.setattr(settings, "SUPABASE_DIRECT_DB_URL", "")
+
+    class _Resp:
+        data = [
+            {
+                "id": "vh_1",
+                "claim_text": "abc",
+                "verification_result": "false",
+                "verdict": "Likely false or unsupported",
+                "credibility_score": 20,
+                "summary": "No trusted sources found.",
+                "sources": [],
+            }
+        ]
+
+    def _fake_run_with_timeout(func, timeout_seconds=10):
+        return _Resp()
+
+    monkeypatch.setattr(claims_service, "_run_with_timeout", _fake_run_with_timeout)
+
+    result = claims_service.insert_verification_history(
+        claim_text="abc",
+        verification_result="false",
+        verdict="Likely false or unsupported",
+        credibility_score=20,
+        summary="No trusted sources found.",
+        sources=[],
+    )
+    assert result["claim_text"] == "abc"

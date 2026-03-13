@@ -1,7 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from app.services.claims_service import check_verification_history, insert_claim
+from app.services.claims_service import check_verification_history, insert_claim, insert_verification_history
+from app.services.credibility_engine import generate_verification_result
+from app.services.gemini_summary import generate_evidence_summary
 from app.services.news_verification import search_news_sources
 from app.utils.text_processing import preprocess_claim_text
 
@@ -10,6 +12,15 @@ router = APIRouter()
 
 class VerifyClaimRequest(BaseModel):
     text: str = Field(min_length=1)
+
+
+def _verdict_from_result(verification_result: str) -> str:
+    normalized = verification_result.strip().lower()
+    if normalized == "true":
+        return "Likely true"
+    if normalized == "false":
+        return "Likely false or unsupported"
+    return "Verdict unavailable"
 
 
 @router.post("/verify-claim")
@@ -22,9 +33,12 @@ def verify_claim(payload: VerifyClaimRequest) -> dict:
     try:
         previous_result = check_verification_history(processed_text)
         if previous_result:
+            previous_verification_result = str(previous_result.get("verification_result", ""))
+            previous_verdict = previous_result.get("verdict") or _verdict_from_result(previous_verification_result)
             return {
                 "status": "found",
-                "verification_result": str(previous_result.get("verification_result", "")),
+                "verification_result": previous_verification_result,
+                "verdict": previous_verdict,
                 "credibility_score": previous_result.get("credibility_score"),
                 "summary": previous_result.get("summary"),
             }
@@ -38,6 +52,21 @@ def verify_claim(payload: VerifyClaimRequest) -> dict:
                 "articles": [],
                 "warning": str(exc),
             }
+
+        verification_result = generate_verification_result(processed_text, news_lookup.get("articles", []))
+        summary = generate_evidence_summary(
+            processed_text,
+            verification_result.get("top_credible_articles", []),
+        )
+
+        insert_verification_history(
+            claim_text=processed_text,
+            verification_result=verification_result["verification_result"],
+            verdict=verification_result["verdict"],
+            credibility_score=verification_result["credibility_score"],
+            summary=summary,
+            sources=news_lookup.get("articles", []),
+        )
     except TimeoutError as exc:
         raise HTTPException(status_code=504, detail=str(exc)) from exc
     except RuntimeError as exc:
@@ -45,9 +74,19 @@ def verify_claim(payload: VerifyClaimRequest) -> dict:
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    return {
-        "status": "not_found",
-        "message": "No history found. Proceeding to verification pipeline.",
+    response_payload = {
+        "status": "generated",
+        "message": "No history found. Generated and stored a new verification result.",
         "claim": processed_text,
-        "news_lookup": news_lookup,
+        "verification_result": verification_result["verification_result"],
+        "verdict": verification_result["verdict"],
+        "credibility_score": verification_result["credibility_score"],
+        "summary": summary,
+        "articles_found": news_lookup.get("articles_found", 0),
+        "sources": news_lookup.get("articles", []),
     }
+
+    if "warning" in news_lookup:
+        response_payload["warning"] = news_lookup["warning"]
+
+    return response_payload

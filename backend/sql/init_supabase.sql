@@ -13,11 +13,15 @@ create table if not exists public.verification_history (
     id uuid primary key default gen_random_uuid(),
     claim_text text not null,
     verification_result text,
+    verdict text,
     credibility_score numeric,
     summary text,
     sources jsonb,
     created_at timestamptz not null default now()
 );
+
+alter table public.verification_history
+add column if not exists verdict text;
 
 alter table public.claims enable row level security;
 alter table public.verification_history enable row level security;
@@ -51,6 +55,19 @@ begin
     end if;
 
     if not exists (
+                select 1 from pg_policies
+                where schemaname = 'public'
+                    and tablename = 'verification_history'
+                    and policyname = 'Allow anon insert verification history'
+        ) then
+                create policy "Allow anon insert verification history"
+                on public.verification_history
+                for insert
+                to anon
+                with check (true);
+        end if;
+
+        if not exists (
         select 1 from pg_policies
         where schemaname = 'public'
           and tablename = 'verification_history'
