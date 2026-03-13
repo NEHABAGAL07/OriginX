@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.services.claims_service import check_verification_history, insert_claim
+from app.services.news_verification import search_news_sources
 from app.utils.text_processing import preprocess_claim_text
 
 router = APIRouter()
@@ -29,6 +30,14 @@ def verify_claim(payload: VerifyClaimRequest) -> dict:
             }
 
         insert_claim(processed_text)
+        try:
+            news_lookup = search_news_sources(processed_text)
+        except (ValueError, RuntimeError) as exc:
+            news_lookup = {
+                "articles_found": 0,
+                "articles": [],
+                "warning": str(exc),
+            }
     except TimeoutError as exc:
         raise HTTPException(status_code=504, detail=str(exc)) from exc
     except RuntimeError as exc:
@@ -40,4 +49,5 @@ def verify_claim(payload: VerifyClaimRequest) -> dict:
         "status": "not_found",
         "message": "No history found. Proceeding to verification pipeline.",
         "claim": processed_text,
+        "news_lookup": news_lookup,
     }
