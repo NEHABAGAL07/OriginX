@@ -1,7 +1,7 @@
 from tests.conftest import create_test_client
 
 
-def test_verify_claim_success(monkeypatch) -> None:
+def test_verify_claim_no_history(monkeypatch) -> None:
     from app.routes import claims as route_module
 
     captured: dict[str, str] = {}
@@ -10,6 +10,7 @@ def test_verify_claim_success(monkeypatch) -> None:
         captured["claim_text"] = claim_text
         return {"id": "1", "claim_text": claim_text}
 
+    monkeypatch.setattr(route_module, "check_verification_history", lambda _claim_text: None)
     monkeypatch.setattr(route_module, "insert_claim", _fake_insert_claim)
 
     client = create_test_client()
@@ -17,15 +18,43 @@ def test_verify_claim_success(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json() == {
-        "message": "Claim received",
+        "status": "not_found",
+        "message": "No history found. Proceeding to verification pipeline.",
         "claim": "the city water supply",
     }
     assert captured["claim_text"] == "the city water supply"
 
 
+def test_verify_claim_history_found(monkeypatch) -> None:
+    from app.routes import claims as route_module
+
+    monkeypatch.setattr(
+        route_module,
+        "check_verification_history",
+        lambda _claim_text: {
+            "verification_result": "false",
+            "credibility_score": 22,
+            "summary": "Authorities confirmed the water supply is safe.",
+        },
+    )
+    monkeypatch.setattr(route_module, "insert_claim", lambda claim_text: {"id": "1", "claim_text": claim_text})
+
+    client = create_test_client()
+    response = client.post("/verify-claim", json={"text": "The city water supply has been poisoned"})
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "found",
+        "verification_result": "false",
+        "credibility_score": 22,
+        "summary": "Authorities confirmed the water supply is safe.",
+    }
+
+
 def test_verify_claim_empty_after_normalization(monkeypatch) -> None:
     from app.routes import claims as route_module
 
+    monkeypatch.setattr(route_module, "check_verification_history", lambda _claim_text: None)
     monkeypatch.setattr(route_module, "insert_claim", lambda claim_text: {"id": "1", "claim_text": claim_text})
 
     client = create_test_client()
@@ -41,6 +70,7 @@ def test_verify_claim_timeout(monkeypatch) -> None:
     def _raise_timeout(_claim_text: str):
         raise TimeoutError("timeout")
 
+    monkeypatch.setattr(route_module, "check_verification_history", lambda _claim_text: None)
     monkeypatch.setattr(route_module, "insert_claim", _raise_timeout)
 
     client = create_test_client()

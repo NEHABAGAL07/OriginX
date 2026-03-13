@@ -63,6 +63,31 @@ def _get_claim_history_direct(claim_text: str) -> list[dict[str, Any]]:
     ]
 
 
+def _check_verification_history_direct(claim_text: str) -> dict[str, Any] | None:
+    with psycopg.connect(settings.SUPABASE_DIRECT_DB_URL, connect_timeout=8) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                select verification_result, credibility_score, summary
+                from public.verification_history
+                where claim_text = %s
+                order by created_at desc
+                limit 1
+                """,
+                (claim_text,),
+            )
+            row = cur.fetchone()
+
+    if not row:
+        return None
+
+    return {
+        "verification_result": row[0],
+        "credibility_score": row[1],
+        "summary": row[2],
+    }
+
+
 def insert_claim(claim_text: str) -> dict[str, Any]:
     if settings.SUPABASE_USE_DIRECT_DB and settings.SUPABASE_DIRECT_DB_URL:
         try:
@@ -113,3 +138,28 @@ def get_claim_history(claim_text: str) -> list[dict[str, Any]]:
     )
 
     return response.data or []
+
+
+def check_verification_history(claim_text: str) -> dict[str, Any] | None:
+    if settings.SUPABASE_USE_DIRECT_DB and settings.SUPABASE_DIRECT_DB_URL:
+        try:
+            return _run_with_timeout(lambda: _check_verification_history_direct(claim_text), timeout_seconds=10)
+        except Exception:
+            pass
+
+    response = _run_with_timeout(
+        lambda: (
+            supabase.table("verification_history")
+            .select("verification_result, credibility_score, summary")
+            .eq("claim_text", claim_text)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        ),
+        timeout_seconds=10,
+    )
+
+    if not response.data:
+        return None
+
+    return response.data[0]
