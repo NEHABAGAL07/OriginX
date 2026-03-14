@@ -1,36 +1,30 @@
 # OriginX
 
-OriginX is a full-stack misinformation analysis platform:
+OriginX is a full-stack misinformation analysis platform with a FastAPI backend and a React + Vite frontend.
 
-- Backend: FastAPI services for claim verification, domain security checks, and propagation analysis.
-- Frontend: React + Vite dashboard connected directly to backend APIs.
+It includes:
 
-The frontend and backend are now connected and running with live data flow:
+- Claim verification with evidence-backed scoring.
+- URL/domain risk and propagation analysis.
+- Trusted-source trending news aggregation.
+- Real-time dashboard and history views backed by Supabase records.
 
-- Verify Claim page calls backend claim-verification APIs.
-- URL Investigation page calls backend domain + Reddit propagation APIs.
-- URL Investigation auto-refreshes backend results every 30 seconds for real-time monitoring.
-- Trending News page calls backend daily headlines API and auto-refreshes every 30 minutes.
+## Architecture
 
-## Project Structure
-
-- backend/: FastAPI application, services, tests, SQL setup scripts.
-- backend/app/: API routes, business logic, and configuration.
-- backend/sql/: Supabase schema and policy setup.
-- backend/tests/: Automated backend test suite.
-- frontend/: React/Vite application.
-- frontend/src/app/pages/: Main user pages, including Verify Claim and URL Investigation.
+- `backend/`: FastAPI API server, services, Supabase integration, tests.
+- `frontend/`: React UI with route-based pages and API service layer.
+- `backend/sql/init_supabase.sql`: schema + policies for `claims` and `verification_history`.
 
 ## Prerequisites
 
 - Python 3.11+
-- Node.js 18+ (Node.js 20 LTS recommended)
+- Node.js 18+ (20 LTS recommended)
 - npm 9+
-- Supabase project credentials (for database-backed features)
+- Supabase project (URL + anon key)
 
-## 1) Backend Setup
+## Quick Start
 
-From the repository root:
+### 1) Backend
 
 ```bash
 cd backend
@@ -40,14 +34,14 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-Create backend/.env from backend/.env.example and set required values:
+Create `backend/.env` from `backend/.env.example` and set required values:
 
-- SUPABASE_URL
-- SUPABASE_KEY
+- `SUPABASE_URL`
+- `SUPABASE_KEY`
 
-Optional but recommended for frontend integration:
+Recommended for local frontend integration:
 
-- BACKEND_CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+- `BACKEND_CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173`
 
 Run backend:
 
@@ -55,18 +49,16 @@ Run backend:
 uvicorn app.main:app --reload
 ```
 
-Backend URL: http://127.0.0.1:8000
+Backend base URL: `http://127.0.0.1:8000`
 
-## 2) Frontend Setup
-
-Open another terminal from repository root:
+### 2) Frontend
 
 ```bash
 cd frontend
 npm install
 ```
 
-Create frontend/.env from frontend/.env.example:
+Create `frontend/.env` (or `.env.local`) and set:
 
 ```text
 VITE_API_BASE_URL=http://127.0.0.1:8000
@@ -78,50 +70,51 @@ Run frontend:
 npm run dev
 ```
 
-Frontend URL (default): http://localhost:5173
+Frontend URL (default): `http://localhost:5173`
 
-## Real-Time Integration Behavior
+## Real-Time Product Behavior
 
-- Verify Claim (frontend -> POST /verify-claim)
-  - Sends claim text to backend.
-  - Receives verdict, credibility score, summary, and evidence sources.
-  - Displays backend warnings/errors in UI.
+- Dashboard (`/dashboard`)
+  - Uses database-backed summary endpoint.
+  - Auto-refreshes every 30 seconds.
+  - Trending Topics are derived from live trending news topics.
 
-- URL Investigation (frontend -> POST /analysis/domain-security and /analysis/reddit-propagation)
-  - Runs live domain security and propagation checks.
-  - Renders backend propagation graph data.
-  - Automatically refreshes every 30 seconds while page is active.
+- History (`/history`)
+  - Reads latest verification records from database.
+  - Auto-refreshes every 30 seconds.
+  - Supports search, status filter, and sorting on live records.
 
-- Trending News (frontend -> GET /analysis/trending-news)
-  - Loads daily top headlines through an RSS-first trusted publisher aggregator.
-  - Defaults to Global mode and prioritizes maximum headlines from auto-detected local country.
-  - Supports country selection and category filtering in the UI.
-  - When a specific country is selected, fetch is strict to that region only (no US fallback).
-  - Returns only trusted-source stories for the selected region/category.
-  - Automatically refreshes every 30 minutes.
-  - Shows last refresh time directly on the page.
+- Verify Claim (`/verify`)
+  - Calls backend verification API.
+  - Persists generated verification into `verification_history`.
 
-## Health Check
+- URL Investigation (`/url-investigation`)
+  - Uses domain-security and Reddit propagation APIs.
+  - Refreshes analysis view periodically on the page.
 
-```text
-GET http://127.0.0.1:8000/health
-```
+- Trending News (`/trending`)
+  - Uses trusted-source RSS aggregation.
+  - Country/category aware.
+  - Auto-refreshes every 30 minutes.
 
-Expected response:
+## Core API Endpoints
 
-```json
-{
-  "status": "OriginX backend running"
-}
-```
+- `GET /health`
+- `POST /verify-claim`
+- `POST /verify-claim/final`
+- `GET /dashboard/summary`
+- `GET /history/verifications`
+- `POST /analysis/domain-security`
+- `POST /analysis/reddit-propagation`
+- `GET /analysis/trending-news`
 
-## Database Setup (Supabase)
+## Database Setup
 
-Run SQL in Supabase SQL Editor:
+Run the SQL script below in Supabase SQL Editor:
 
-- backend/sql/init_supabase.sql
+- `backend/sql/init_supabase.sql`
 
-## Running Tests
+## Testing
 
 Backend tests:
 
@@ -130,9 +123,16 @@ cd backend
 pytest -q
 ```
 
-## API Docs
+Frontend production build:
+
+```bash
+cd frontend
+npm run build
+```
+
+## API Documentation
 
 When backend is running:
 
-- Swagger UI: http://127.0.0.1:8000/docs
-- ReDoc: http://127.0.0.1:8000/redoc
+- Swagger UI: `http://127.0.0.1:8000/docs`
+- ReDoc: `http://127.0.0.1:8000/redoc`

@@ -1,117 +1,130 @@
 # OriginX Backend
 
-Backend foundation for the OriginX project using FastAPI.
+FastAPI backend for OriginX. It powers claim verification, security analysis, trending news, and real-time dashboard/history data from Supabase.
+
+## Tech Stack
+
+- FastAPI + Uvicorn
+- Supabase (REST path and optional direct PostgreSQL path)
+- Requests + service-layer API integrations
 
 ## Setup
 
-1. Create and activate a Python virtual environment.
-2. Install dependencies:
-
 ```bash
+cd backend
+python -m venv .venv
+# Windows PowerShell
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
-3. Run the server:
+Run server:
 
 ```bash
 uvicorn app.main:app --reload
 ```
 
-## Supabase Credentials
+Backend URL: `http://127.0.0.1:8000`
 
-Put your Supabase credentials in `backend/.env`.
+## Environment Variables
 
-```text
-SUPABASE_URL=https://your-project-ref.supabase.co
-SUPABASE_KEY=your-anon-key
-```
+Create `backend/.env` from `backend/.env.example`.
 
-You can use `backend/.env.example` as the template.
+Required:
 
-Value mapping from Supabase dashboard:
+- `SUPABASE_URL`
+- `SUPABASE_KEY`
 
-- Project URL -> `SUPABASE_URL`
-- API Key (`anon public`) -> `SUPABASE_KEY`
+Common optional:
 
-Optional direct PostgreSQL connection (bypasses anon RLS path):
+- `BACKEND_CORS_ORIGINS` (comma-separated list)
+- `NEWSAPI_KEY`
+- `GOOGLE_AI_STUDIO_API_KEY`
+- `GEMINI_MODEL`
+- `VIRUSTOTAL_API_KEY`
+- `OPENPHISH_FEED_URL`
+- `REDDIT_USER_AGENT`
 
-- `SUPABASE_USE_DIRECT_DB=true` -> explicitly enable direct DB mode.
-- `SUPABASE_DIRECT_DB_URL` -> use the Connection String from Supabase Database settings.
-- If your password contains special characters like `#`, `+`, `$`, URL-encode it in the URI.
-- If `db.<project-ref>.supabase.co` does not resolve on your network, use the Supabase Connection Pooler URI (IPv4-friendly) instead.
+Optional direct PostgreSQL mode:
 
-If `SUPABASE_USE_DIRECT_DB` is not set to `true`, the backend uses the Supabase REST API path by default.
+- `SUPABASE_USE_DIRECT_DB=true`
+- `SUPABASE_DIRECT_DB_URL=postgresql://...`
 
-## Database Schema Setup (Supabase)
+Notes:
 
-Run `backend/sql/init_supabase.sql` in Supabase SQL Editor to create required tables:
+- If `SUPABASE_USE_DIRECT_DB` is not `true`, backend uses Supabase REST path.
+- URL-encode special characters in DB password for direct connection URI.
 
-- `claims`
-- `verification_history`
+## Database Schema (Supabase)
 
-## Test Database Connection
+Run this script in Supabase SQL Editor:
 
-1. Start server:
+- `backend/sql/init_supabase.sql`
 
-```bash
-uvicorn app.main:app --reload
-```
+It creates:
 
-2. Verify API is alive:
+- `public.claims`
+- `public.verification_history`
+- required RLS policies for anon insert/select
+
+## Main Endpoints
+
+Health:
+
+- `GET /health`
+
+Claims:
+
+- `POST /verify-claim`
+- `POST /verify-claim/final`
+- `GET /dashboard/summary`
+- `GET /history/verifications`
+
+Analysis:
+
+- `POST /analysis/domain-security`
+- `POST /analysis/reddit-propagation`
+- `POST /analysis/propagation`
+- `GET /analysis/trending-news`
+
+Database utility:
+
+- `GET /test-db/status`
+- `POST /test-db`
+- `GET /test-db/history`
+
+## Real-Time Data Endpoints
+
+- `GET /dashboard/summary`
+  - Aggregates totals, changes, recent records, and trending topics.
+  - Used by frontend dashboard polling.
+
+- `GET /history/verifications`
+  - Returns latest verification rows with derived fields.
+  - Used by frontend history polling.
+
+## Quick Validation
+
+1. Backend health:
 
 ```text
 GET http://127.0.0.1:8000/health
 ```
 
-3. Verify Supabase connectivity:
+2. Supabase connectivity:
 
 ```text
 GET http://127.0.0.1:8000/test-db/status
 ```
 
-Expected success:
+3. API docs:
 
-```json
-{
-  "connected": true,
-  "message": "Supabase REST endpoint reachable"
-}
-```
+- Swagger: `http://127.0.0.1:8000/docs`
+- ReDoc: `http://127.0.0.1:8000/redoc`
 
-4. Verify Supabase insert connection:
+## Tests
 
-```text
-POST http://127.0.0.1:8000/test-db
-Content-Type: application/json
-
-{
-  "claim_text": "Test claim"
-}
-```
-
-If connection is successful, response returns inserted record from `claims` table.
-If not, response includes Supabase error details.
-
-5. Verify claim history lookup:
-
-```text
-GET http://127.0.0.1:8000/test-db/history?claim_text=Test%20claim
-```
-
-Expected success: array of matching rows from `verification_history` (may be empty).
-
-## Health Check
-
-Visit:
-
-```text
-http://127.0.0.1:8000/health
-```
-
-Expected response:
-
-```json
-{
-  "status": "OriginX backend running"
-}
+```bash
+cd backend
+pytest -q
 ```

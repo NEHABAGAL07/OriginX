@@ -1,91 +1,97 @@
-
 # OriginX Frontend
 
-Frontend application for OriginX, built with React and Vite.
+React + Vite frontend for OriginX.
 
-This UI started from a Figma-exported code bundle and was adapted into a multi-page verification dashboard.
+It consumes backend APIs for verification, analysis, trending news, and real-time dashboard/history data.
 
-## Design Source
+## Stack
 
-- Original design: https://www.figma.com/design/FNqn2hiyeuJQiH3BbsA6Ap/Design-AI-Verification-Dashboard
-
-## Tech Stack
-
-- React 18 + React Router
+- React 18
+- React Router
 - Vite 6
 - Tailwind CSS 4
-- Radix UI primitives
-- MUI icons/components (selective use)
-- Charting and graph libraries (Chart.js, Recharts, Cytoscape)
+- Motion + Lucide UI components
 
 ## Prerequisites
 
-- Node.js 18+ (Node.js 20 LTS recommended)
+- Node.js 18+ (20 LTS recommended)
 - npm 9+
 
-## Getting Started
+## Environment
 
-1. Install dependencies:
-
-   ```bash
-   npm install
-   ```
-
-2. Start development server:
-
-   ```bash
-   npm run dev
-   ```
-
-3. Open the local URL shown in the terminal (typically http://localhost:5173).
-
-## Available Scripts
-
-- `npm run dev` - Start Vite development server
-- `npm run build` - Create production build in `dist/`
-
-## Application Routes
-
-- `/` - Landing page
-- `/dashboard` - Main dashboard view
-- `/verify` - Claim verification flow
-- `/verify-image` - Image verification entry (currently mapped to verify page)
-- `/history` - Verification history
-- `/url-investigation` - URL investigation workflow
-- `/trending` - Trending news insights
-- `/settings` - App settings
-
-## Project Structure
+Create `frontend/.env` (or `.env.local`) with:
 
 ```text
-frontend/
-  src/
-    app/
-      App.tsx
-      routes.ts
-      components/
-      pages/
-    styles/
-  app/services/
-  guidelines/
+VITE_API_BASE_URL=http://127.0.0.1:8000
 ```
 
-## Notes
+If omitted, frontend falls back to `http://127.0.0.1:8000`.
 
-- This frontend currently does not require local environment variables to boot.
-- If backend APIs are introduced or changed, document the corresponding `VITE_...` variables here.
+## Run
 
-## Build Output
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-Run:
+Default local app URL: `http://localhost:5173`
+
+## Scripts
+
+- `npm run dev` - start development server
+- `npm run build` - build production assets into `dist/`
+
+## Routes
+
+- `/` - Landing page
+- `/dashboard` - Real-time overview (database-backed)
+- `/verify` - Claim verification
+- `/verify-image` - Alias route to verify page
+- `/history` - Real-time verification history (database-backed)
+- `/url-investigation` - URL/domain + propagation investigation
+- `/trending` - Trusted-source trending news
+- `/settings` - Settings page
+
+## Real-Time Behavior
+
+- Dashboard
+  - Polls backend summary endpoint.
+  - Updates cards, recent verifications, and trending topics automatically.
+
+- History
+  - Polls backend history endpoint.
+  - Updates table and summary metrics automatically.
+
+- Trending News
+  - Polls backend every 30 minutes.
+  - Country/category aware and trusted-source filtered.
+
+## API Integration
+
+Frontend service layer is in:
+
+- `src/app/services/api.ts`
+
+Important endpoints used by UI:
+
+- `POST /verify-claim`
+- `GET /dashboard/summary`
+- `GET /history/verifications`
+- `POST /analysis/domain-security`
+- `POST /analysis/reddit-propagation`
+- `GET /analysis/trending-news`
+
+## Build
 
 ```bash
 npm run build
 ```
 
-Production files are generated in the `dist/` directory.
+Output directory:
+
+- `frontend/dist/`
 
 ## Attribution
 
-See `ATTRIBUTIONS.md` for third-party and design attribution details.
-  
+See `ATTRIBUTIONS.md` for design and third-party attribution.
