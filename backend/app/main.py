@@ -15,7 +15,7 @@ async def lifespan(_: FastAPI):
 	yield
 
 
-app = FastAPI(title="TruthSeeker Backend", lifespan=lifespan)
+app = FastAPI(title="OriginX Backend", lifespan=lifespan)
 
 app.include_router(health_router)
 app.include_router(claims_router)

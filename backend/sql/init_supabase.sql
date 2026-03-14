@@ -1,4 +1,4 @@
--- TruthSeeker Supabase schema setup
+-- OriginX Supabase schema setup
 -- Run this in Supabase SQL Editor.
 
 create extension if not exists pgcrypto;

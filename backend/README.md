@@ -1,6 +1,6 @@
-# TruthSeeker Backend
+# OriginX Backend
 
-Backend foundation for the TruthSeeker project using FastAPI.
+Backend foundation for the OriginX project using FastAPI.
 
 ## Setup
 
@@ -112,6 +112,6 @@ Expected response:
 
 ```json
 {
-  "status": "TruthSeeker backend running"
+  "status": "OriginX backend running"
 }
 ```

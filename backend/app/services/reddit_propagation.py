@@ -13,7 +13,7 @@ _REDDIT_BASE_URL = "https://www.reddit.com"
 
 
 def _headers() -> dict[str, str]:
-    user_agent = settings.REDDIT_USER_AGENT or "TruthSeeker/1.0 (by /u/truthseeker-app)"
+    user_agent = settings.REDDIT_USER_AGENT or "OriginX/1.0 (by /u/originx-app)"
     return {"User-Agent": user_agent}
 
 

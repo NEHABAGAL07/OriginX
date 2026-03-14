@@ -5,4 +5,4 @@ router = APIRouter()
 
 @router.get("/health")
 def health_check() -> dict[str, str]:
-    return {"status": "TruthSeeker backend running"}
+    return {"status": "OriginX backend running"}
