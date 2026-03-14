@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.services.domain_security import analyze_claim_urls, analyze_domain_risk
+from app.services.news_verification import fetch_trending_daily_news
 from app.services.propagation_analysis import analyze_propagation
 from app.services.reddit_propagation import analyze_reddit_propagation
 
@@ -65,6 +66,28 @@ def reddit_propagation_analysis(payload: RedditPropagationRequest) -> dict[str, 
             comments_per_post=payload.comments_per_post,
             sort=payload.sort,
             time_filter=payload.time_filter,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/trending-news")
+def trending_daily_news(
+    limit: int = 12,
+    country: str = "global",
+    category: str | None = None,
+    local_country: str | None = None,
+) -> dict[str, Any]:
+    try:
+        return fetch_trending_daily_news(
+            limit=limit,
+            country=country,
+            category=category,
+            local_country=local_country,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

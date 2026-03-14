@@ -54,6 +54,29 @@ export interface RedditPropagationResponse {
   analysis: RedditAnalysis;
 }
 
+export interface TrendingNewsArticle {
+  source: string;
+  title: string;
+  description: string;
+  url: string;
+  published_at: string;
+  region: string;
+  category: string;
+}
+
+export interface TrendingNewsResponse {
+  generated_at: string;
+  refresh_interval_minutes: number;
+  trusted_only: boolean;
+  trusted_source_count: number;
+  skipped_untrusted_count: number;
+  requested_country: string;
+  local_country: string;
+  category: string;
+  articles_found: number;
+  articles: TrendingNewsArticle[];
+}
+
 const viteEnv = (import.meta as ImportMeta & { env?: Record<string, string> }).env;
 const API_BASE_URL = (viteEnv?.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 
@@ -114,4 +137,20 @@ export function analyzeRedditPropagation(input: {
 
 export function healthCheck(): Promise<{ status: string }> {
   return requestJson<{ status: string }>("/health");
+}
+
+export function getTrendingNews(input?: {
+  limit?: number;
+  country?: string;
+  category?: string;
+  local_country?: string;
+}): Promise<TrendingNewsResponse> {
+  const params = new URLSearchParams();
+  if (typeof input?.limit === "number") params.set("limit", String(input.limit));
+  if (input?.country) params.set("country", input.country);
+  if (input?.category) params.set("category", input.category);
+  if (input?.local_country) params.set("local_country", input.local_country);
+
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return requestJson<TrendingNewsResponse>(`/analysis/trending-news${suffix}`);
 }

@@ -10,6 +10,7 @@ The frontend and backend are now connected and running with live data flow:
 - Verify Claim page calls backend claim-verification APIs.
 - URL Investigation page calls backend domain + Reddit propagation APIs.
 - URL Investigation auto-refreshes backend results every 30 seconds for real-time monitoring.
+- Trending News page calls backend daily headlines API and auto-refreshes every 30 minutes.
 
 ## Project Structure
 
@@ -90,6 +91,15 @@ Frontend URL (default): http://localhost:5173
   - Runs live domain security and propagation checks.
   - Renders backend propagation graph data.
   - Automatically refreshes every 30 seconds while page is active.
+
+- Trending News (frontend -> GET /analysis/trending-news)
+  - Loads daily top headlines through an RSS-first trusted publisher aggregator.
+  - Defaults to Global mode and prioritizes maximum headlines from auto-detected local country.
+  - Supports country selection and category filtering in the UI.
+  - When a specific country is selected, fetch is strict to that region only (no US fallback).
+  - Returns only trusted-source stories for the selected region/category.
+  - Automatically refreshes every 30 minutes.
+  - Shows last refresh time directly on the page.
 
 ## Health Check
 
