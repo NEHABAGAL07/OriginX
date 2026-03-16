@@ -19,6 +19,7 @@ export function History() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('date');
+  const [currentPage, setCurrentPage] = useState(1);
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [historyData, setHistoryData] = useState<HistoryItem[]>([]);
   const [refreshIntervalSeconds, setRefreshIntervalSeconds] = useState(30);
@@ -151,6 +152,7 @@ export function History() {
   };
 
   const selectedStatusLabel = statusOptions.find((option) => option.value === filterStatus)?.label || 'All Status';
+  const itemsPerPage = 8;
 
   const filteredData = historyData
     .filter((item) => {
@@ -162,6 +164,20 @@ export function History() {
       if (sortBy === 'score') return b.credibilityScore - a.credibilityScore;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
+
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage));
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterStatus, sortBy]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const trueCount = historyData.filter((item) => item.status.includes('True')).length;
   const falseCount = historyData.filter((item) => item.status.includes('False')).length;
@@ -344,7 +360,7 @@ export function History() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredData.map((item, index) => (
+                  {paginatedData.map((item, index) => (
                     <motion.tr
                       key={item.id}
                       initial={{ opacity: 0, y: 20 }}
@@ -428,31 +444,60 @@ export function History() {
           {filteredData.length > 0 && (
             <div className="mt-6 flex items-center justify-between">
               <p className={`text-sm ${isDarkMode ? 'text-[#94A3B8]' : 'text-[#64748B]'}`}>
-                Showing {filteredData.length} of {historyData.length} verifications
+                Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredData.length)} of {filteredData.length} verifications
               </p>
 
               <div className="flex items-center gap-2">
-                <button className={`px-4 py-2 border rounded-lg text-sm transition-colors ${
-                  isDarkMode ? 'border-[#334155] text-[#94A3B8] hover:bg-[#1E293B]' : 'border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC]'
-                }`}>
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className={`px-4 py-2 border rounded-lg text-sm transition-colors ${
+                    currentPage === 1
+                      ? isDarkMode
+                        ? 'border-[#374151] text-[#6B7280] bg-[#111827] cursor-not-allowed'
+                        : 'border-[#E2E8F0] text-[#94A3B8] bg-[#F8FAFC] cursor-not-allowed'
+                      : isDarkMode
+                        ? 'border-[#334155] text-[#94A3B8] hover:bg-[#1E293B]'
+                        : 'border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC]'
+                  }`}
+                >
                   Previous
                 </button>
-                <button className="px-4 py-2 bg-[#3B82F6] text-white rounded-lg text-sm hover:bg-[#2563EB] transition-colors">
-                  1
-                </button>
-                <button className={`px-4 py-2 border rounded-lg text-sm transition-colors ${
-                  isDarkMode ? 'border-[#334155] text-[#94A3B8] hover:bg-[#1E293B]' : 'border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC]'
-                }`}>
-                  2
-                </button>
-                <button className={`px-4 py-2 border rounded-lg text-sm transition-colors ${
-                  isDarkMode ? 'border-[#334155] text-[#94A3B8] hover:bg-[#1E293B]' : 'border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC]'
-                }`}>
-                  3
-                </button>
-                <button className={`px-4 py-2 border rounded-lg text-sm transition-colors ${
-                  isDarkMode ? 'border-[#334155] text-[#94A3B8] hover:bg-[#1E293B]' : 'border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC]'
-                }`}>
+
+                {Array.from({ length: totalPages }, (_, index) => {
+                  const pageNumber = index + 1;
+                  const isActive = pageNumber === currentPage;
+
+                  return (
+                    <button
+                      key={pageNumber}
+                      onClick={() => setCurrentPage(pageNumber)}
+                      className={`px-4 py-2 rounded-lg text-sm transition-colors ${
+                        isActive
+                          ? 'bg-[#3B82F6] text-white hover:bg-[#2563EB]'
+                          : isDarkMode
+                            ? 'border border-[#334155] text-[#94A3B8] hover:bg-[#1E293B]'
+                            : 'border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC]'
+                      }`}
+                    >
+                      {pageNumber}
+                    </button>
+                  );
+                })}
+
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className={`px-4 py-2 border rounded-lg text-sm transition-colors ${
+                    currentPage === totalPages
+                      ? isDarkMode
+                        ? 'border-[#374151] text-[#6B7280] bg-[#111827] cursor-not-allowed'
+                        : 'border-[#E2E8F0] text-[#94A3B8] bg-[#F8FAFC] cursor-not-allowed'
+                      : isDarkMode
+                        ? 'border-[#334155] text-[#94A3B8] hover:bg-[#1E293B]'
+                        : 'border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC]'
+                  }`}
+                >
                   Next
                 </button>
               </div>

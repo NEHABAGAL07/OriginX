@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { Flame, Globe, ArrowUpRight, Clock3 } from 'lucide-react';
+import { Flame, Globe, ArrowUpRight, Clock3, RefreshCw } from 'lucide-react';
 import { Sidebar } from '../components/Sidebar';
 import { useDarkMode } from '../components/DarkModeContext';
 import { getTrendingNews, type TrendingNewsResponse } from '../services/api';
@@ -143,6 +143,8 @@ export function TrendingNews() {
   const [selectedCountry, setSelectedCountry] = useState('global');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [detectedLocalCountry, setDetectedLocalCountry] = useState('us');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
   const detectedLocalCountryName = formatCountryName(detectedLocalCountry);
 
   useEffect(() => {
@@ -252,9 +254,23 @@ export function TrendingNews() {
     momentum: `+${Math.max(8, 28 - index * 2)}%`,
   }));
 
+  const totalPages = Math.max(1, Math.ceil(trendingNews.length / itemsPerPage));
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedTrendingNews = trendingNews.slice(startIndex, startIndex + itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCountry, selectedCategory]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   const metrics = [
     {
-      label: 'Stories Tracked',
+      label: 'News Tracked',
       value: String(newsData?.articles_found || trendingNews.length || 0),
       icon: Flame,
       color: '#F97316'
@@ -314,6 +330,28 @@ export function TrendingNews() {
           </div>
 
           <div className={`mb-6 rounded-2xl border p-5 ${isDarkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E2E8F0]'}`}>
+            <div className="mb-4 flex items-center justify-end">
+              <button
+                onClick={() => {
+                  void fetchLatestNews();
+                }}
+                disabled={isLoadingNews}
+                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-all ${
+                  isLoadingNews
+                    ? isDarkMode
+                      ? 'border-[#334155] bg-[#0F172A] text-[#64748B] cursor-not-allowed'
+                      : 'border-[#E2E8F0] bg-[#F8FAFC] text-[#94A3B8] cursor-not-allowed'
+                    : isDarkMode
+                      ? 'border-[#3B82F6]/35 bg-[#0F172A] text-[#93C5FD] hover:border-[#22D3EE] hover:text-[#22D3EE]'
+                      : 'border-[#BFDBFE] bg-[#EFF6FF] text-[#1D4ED8] hover:border-[#22D3EE] hover:text-[#0891B2]'
+                }`}
+                title="Refresh trending feed"
+                aria-label="Refresh trending feed"
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoadingNews ? 'animate-spin' : ''}`} />
+                <span>{isLoadingNews ? 'Refreshing...' : 'Refresh'}</span>
+              </button>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label
@@ -382,51 +420,94 @@ export function TrendingNews() {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            {metrics.map((metric, index) => {
-              const Icon = metric.icon;
-
-              return (
-                <motion.div
-                  key={metric.label}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.08 }}
-                  className={`rounded-2xl border p-6 transition-all duration-300 hover:shadow-2xl hover:-translate-y-0.5 relative overflow-hidden group cursor-pointer ${
-                    isDarkMode
-                      ? 'bg-[#1F2937] border-[#374151] shadow-lg shadow-[#3B82F6]/5 hover:shadow-[#3B82F6]/20'
-                      : 'bg-white border-[#E2E8F0] shadow-sm hover:shadow-md'
-                  }`}
-                >
-                  {isDarkMode && (
-                    <div className="absolute inset-0 bg-gradient-to-br from-[#3B82F6]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  )}
-
-                  <div className="relative z-10">
+            {isLoadingNews && !newsData
+              ? Array.from({ length: 3 }, (_, skIndex) => (
+                  <div
+                    key={skIndex}
+                    className={`rounded-2xl border p-6 animate-pulse ${
+                      isDarkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E2E8F0]'
+                    }`}
+                  >
                     <div className="flex items-start justify-between mb-4">
-                      <p className={isDarkMode ? 'text-[#9CA3AF]' : 'text-[#64748B]'}>{metric.label}</p>
-                      <div
-                        className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${isDarkMode ? 'shadow-lg' : ''}`}
-                        style={{
-                          backgroundColor: `${metric.color}15`,
-                          boxShadow: isDarkMode ? `0 0 20px ${metric.color}40` : 'none'
-                        }}
-                      >
-                        <Icon className="w-6 h-6" style={{ color: metric.color }} />
-                      </div>
+                      <div className={`h-4 w-28 rounded-lg ${isDarkMode ? 'bg-[#374151]' : 'bg-[#E2E8F0]'}`} />
+                      <div className={`w-12 h-12 rounded-xl ${isDarkMode ? 'bg-[#374151]' : 'bg-[#E2E8F0]'}`} />
                     </div>
-
-                    <p className={`text-3xl font-bold ${isDarkMode ? 'text-[#F9FAFB]' : 'text-[#0F172A]'}`}>{metric.value}</p>
+                    <div className={`h-9 w-14 rounded-lg ${isDarkMode ? 'bg-[#374151]' : 'bg-[#E2E8F0]'}`} />
                   </div>
-                </motion.div>
-              );
-            })}
+                ))
+              : metrics.map((metric, index) => {
+                  const Icon = metric.icon;
+
+                  return (
+                    <motion.div
+                      key={metric.label}
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.08 }}
+                      className={`rounded-2xl border p-6 transition-all duration-300 hover:shadow-2xl hover:-translate-y-0.5 relative overflow-hidden group cursor-pointer ${
+                        isDarkMode
+                          ? 'bg-[#1F2937] border-[#374151] shadow-lg shadow-[#3B82F6]/5 hover:shadow-[#3B82F6]/20'
+                          : 'bg-white border-[#E2E8F0] shadow-sm hover:shadow-md'
+                      }`}
+                    >
+                      {isDarkMode && (
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#3B82F6]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      )}
+
+                      <div className="relative z-10">
+                        <div className="flex items-start justify-between mb-4">
+                          <p className={isDarkMode ? 'text-[#9CA3AF]' : 'text-[#64748B]'}>{metric.label}</p>
+                          <div
+                            className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${isDarkMode ? 'shadow-lg' : ''}`}
+                            style={{
+                              backgroundColor: `${metric.color}15`,
+                              boxShadow: isDarkMode ? `0 0 20px ${metric.color}40` : 'none'
+                            }}
+                          >
+                            <Icon className="w-6 h-6" style={{ color: metric.color }} />
+                          </div>
+                        </div>
+
+                        <p className={`text-3xl font-bold ${isDarkMode ? 'text-[#F9FAFB]' : 'text-[#0F172A]'}`}>{metric.value}</p>
+                      </div>
+                    </motion.div>
+                  );
+                })
+            }
           </div>
 
           <div className="space-y-4">
             {isLoadingNews && !trendingNews.length && (
-              <div className={`rounded-2xl border p-5 ${isDarkMode ? 'bg-[#1F2937] border-[#374151] text-[#9CA3AF]' : 'bg-white border-[#E2E8F0] text-[#64748B]'}`}>
-                Loading latest headlines...
-              </div>
+              <>
+                {Array.from({ length: 8 }, (_, skIndex) => (
+                  <div
+                    key={skIndex}
+                    className={`rounded-2xl border p-5 animate-pulse ${
+                      isDarkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E2E8F0]'
+                    }`}
+                  >
+                    {/* headline line */}
+                    <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+                      <div className="flex-1 space-y-2">
+                        <div className={`h-5 w-full rounded-lg ${isDarkMode ? 'bg-[#374151]' : 'bg-[#E2E8F0]'}`} />
+                        <div className={`h-5 w-3/4 rounded-lg ${isDarkMode ? 'bg-[#374151]' : 'bg-[#E2E8F0]'}`} />
+                      </div>
+                      <div className={`h-5 w-14 rounded-lg ${isDarkMode ? 'bg-[#374151]' : 'bg-[#E2E8F0]'}`} />
+                    </div>
+                    {/* tag pills */}
+                    <div className="flex flex-wrap gap-2">
+                      {Array.from({ length: 4 }, (__, tIndex) => (
+                        <div
+                          key={tIndex}
+                          className={`h-7 rounded-full ${
+                            tIndex === 0 ? 'w-16' : tIndex === 1 ? 'w-10' : tIndex === 2 ? 'w-20' : 'w-24'
+                          } ${isDarkMode ? 'bg-[#374151]' : 'bg-[#E2E8F0]'}`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </>
             )}
 
             {!isLoadingNews && !trendingNews.length && !newsError && (
@@ -435,7 +516,7 @@ export function TrendingNews() {
               </div>
             )}
 
-            {trendingNews.map((item, index) => (
+            {paginatedTrendingNews.map((item, index) => (
               <motion.div
                 key={item.id}
                 initial={{ opacity: 0, y: 12 }}
@@ -473,6 +554,69 @@ export function TrendingNews() {
                 </div>
               </motion.div>
             ))}
+
+            {trendingNews.length > 0 && (
+              <div className="mt-6 flex items-center justify-between">
+                <p className={`text-sm ${isDarkMode ? 'text-[#94A3B8]' : 'text-[#64748B]'}`}>
+                  Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, trendingNews.length)} of {trendingNews.length} stories
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className={`px-4 py-2 border rounded-lg text-sm transition-colors ${
+                      currentPage === 1
+                        ? isDarkMode
+                          ? 'border-[#374151] text-[#6B7280] bg-[#111827] cursor-not-allowed'
+                          : 'border-[#E2E8F0] text-[#94A3B8] bg-[#F8FAFC] cursor-not-allowed'
+                        : isDarkMode
+                          ? 'border-[#334155] text-[#94A3B8] hover:bg-[#1E293B]'
+                          : 'border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC]'
+                    }`}
+                  >
+                    Previous
+                  </button>
+
+                  {Array.from({ length: totalPages }, (_, index) => {
+                    const pageNumber = index + 1;
+                    const isActive = pageNumber === currentPage;
+
+                    return (
+                      <button
+                        key={pageNumber}
+                        onClick={() => setCurrentPage(pageNumber)}
+                        className={`px-4 py-2 rounded-lg text-sm transition-colors ${
+                          isActive
+                            ? 'bg-[#3B82F6] text-white hover:bg-[#2563EB]'
+                            : isDarkMode
+                              ? 'border border-[#334155] text-[#94A3B8] hover:bg-[#1E293B]'
+                              : 'border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC]'
+                        }`}
+                      >
+                        {pageNumber}
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className={`px-4 py-2 border rounded-lg text-sm transition-colors ${
+                      currentPage === totalPages
+                        ? isDarkMode
+                          ? 'border-[#374151] text-[#6B7280] bg-[#111827] cursor-not-allowed'
+                          : 'border-[#E2E8F0] text-[#94A3B8] bg-[#F8FAFC] cursor-not-allowed'
+                        : isDarkMode
+                          ? 'border-[#334155] text-[#94A3B8] hover:bg-[#1E293B]'
+                          : 'border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC]'
+                    }`}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
